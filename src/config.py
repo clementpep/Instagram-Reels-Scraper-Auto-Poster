@@ -17,14 +17,14 @@ DOWNLOAD_DIR = CURRENT_DIR + '..'+os.sep+'downloads' + os.sep  # Path of folder 
 IS_REMOVE_FILES = 1
 
 # Remove Posted Files Interval
-REMOVE_FILE_AFTER_MINS = 120 #every two hours
+REMOVE_FILE_AFTER_MINS = 1 #every two hours
 
 #--------------------------------------------------------------------------------------------------#
 # Instagram Configurations                                                                         #
 #--------------------------------------------------------------------------------------------------#
 
 # IS RUN REELS SCRAPER
-IS_ENABLED_REELS_SCRAPER = 1
+IS_ENABLED_REELS_SCRAPER = 0
 
 # IS RUN AUTO POSTER
 IS_ENABLED_AUTO_POSTER = 1
@@ -33,25 +33,21 @@ IS_ENABLED_AUTO_POSTER = 1
 IS_POST_TO_STORY = 1
 
 # Fetch LIMIT for scraper script
-FETCH_LIMIT = 10
+FETCH_LIMIT = 0
 
 # Posting interval in Minutes
-POSTING_INTERVAL_IN_MIN = 15  # Every 15 Minutes
+POSTING_INTERVAL_IN_MIN = 3  # Every 15 Minutes
 
 # Scraper interval in Minutes
 SCRAPER_INTERVAL_IN_MIN = 720  # Every 12 hours
 
 # Instagram Username & Password
-USERNAME = "your_username"
-PASSWORD = "your_password"
+USERNAME = "kikodrex69"
+PASSWORD = "Solenn123"
 
 # Account List for scraping
 ACCOUNTS = [
-    "totalgaming_official",
-    "carryminati",
-    "techno_gamerz",
-    "payalgamingg",
-    "dynamo__gaming"
+    ""
 ]
 
 # like_and_view_counts_disabled
@@ -68,11 +64,11 @@ HASHTAGS = "#reels #shorts #likes #follow #Reels-AutoPilot"
 #--------------------------------------------------------------------------------------------------#
 
 # IS RUN YOUTUBE SCRAPER
-IS_ENABLED_YOUTUBE_SCRAPING = 1
+IS_ENABLED_YOUTUBE_SCRAPING = 0
 
 
 # IS RUN YOUTUBE SCRAPER
-YOUTUBE_SCRAPING_INTERVAL_IN_MINS = 120
+YOUTUBE_SCRAPING_INTERVAL_IN_MINS = 0
 
 
 # YOUTUBE API KEY
