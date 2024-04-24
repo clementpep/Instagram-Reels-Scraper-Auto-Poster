@@ -14,10 +14,10 @@ DB_PATH = CURRENT_DIR + '..'+os.sep+'database' + os.sep + 'sqlite.db'
 DOWNLOAD_DIR = CURRENT_DIR + '..'+os.sep+'downloads' + os.sep  # Path of folder where files will be stored
 
 #IS REMOVE FILES
-IS_REMOVE_FILES = 1
+IS_REMOVE_FILES = 2
 
 # Remove Posted Files Interval
-REMOVE_FILE_AFTER_MINS = 1 #every two hours
+REMOVE_FILE_AFTER_MINS = 5 #every two hours
 
 #--------------------------------------------------------------------------------------------------#
 # Instagram Configurations                                                                         #
@@ -36,18 +36,18 @@ IS_POST_TO_STORY = 1
 FETCH_LIMIT = 0
 
 # Posting interval in Minutes
-POSTING_INTERVAL_IN_MIN = 3  # Every 15 Minutes
+POSTING_INTERVAL_IN_MIN = 10  # Every 15 Minutes
 
 # Scraper interval in Minutes
 SCRAPER_INTERVAL_IN_MIN = 720  # Every 12 hours
 
 # Instagram Username & Password
-USERNAME = "kikodrex69"
-PASSWORD = "Solenn123"
+USERNAME = "moviesaddict85"
+PASSWORD = "asdasd123"
 
 # Account List for scraping
 ACCOUNTS = [
-    ""
+    "cinephile.club"
 ]
 
 # like_and_view_counts_disabled
