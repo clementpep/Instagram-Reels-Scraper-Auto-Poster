@@ -42,8 +42,8 @@ POSTING_INTERVAL_IN_MIN = 15  # Every 15 Minutes
 SCRAPER_INTERVAL_IN_MIN = 720  # Every 12 hours
 
 # Instagram Username & Password
-USERNAME = "your_username"
-PASSWORD = "your_password"
+USERNAME = "allywillsom"
+PASSWORD = "hskgood123"
 
 # Account List for scraping
 ACCOUNTS = [
@@ -68,7 +68,7 @@ HASHTAGS = "#reels #shorts #likes #follow #Reels-AutoPilot"
 #--------------------------------------------------------------------------------------------------#
 
 # IS RUN YOUTUBE SCRAPER
-IS_ENABLED_YOUTUBE_SCRAPING = 1
+IS_ENABLED_YOUTUBE_SCRAPING = 0
 
 
 # IS RUN YOUTUBE SCRAPER
