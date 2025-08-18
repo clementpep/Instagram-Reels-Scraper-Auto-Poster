@@ -1,17 +1,18 @@
 # ================================================================================
-# FILE: reels.py (Enhanced version)
-# Description: Enhanced reels scraper with better error handling and logging
+# FILE: reels.py (UPDATED WITH FIX)
+# Description: Fixed reels scraper with proper JSON encoding
 # ================================================================================
 
 from instagrapi import Client
 from instagrapi.exceptions import MediaNotFound, UserNotFound
-from db import Session, Reel, ReelEncoder
+from db import Session, Reel, SafeReelEncoder  # Use SafeReelEncoder
 import json
 from config import config
 import os
 from typing import List, Optional
 from logger_config import logger
 import helpers as Helper
+from datetime import datetime
 
 
 class ReelsScraper:
@@ -104,7 +105,7 @@ class ReelsScraper:
                 logger.error(f"Download verification failed for {code}")
                 return False
 
-            # Save to database
+            # Save to database with safe JSON encoding
             self._save_to_database(reel, account, filename, filepath, code)
             logger.info(f"Successfully saved reel {code} to database")
             return True
@@ -154,7 +155,7 @@ class ReelsScraper:
         self, reel, account: str, filename: str, filepath: str, code: str
     ):
         """
-        Save reel information to database.
+        Save reel information to database with safe JSON encoding.
 
         Args:
             reel: Reel object
@@ -164,6 +165,9 @@ class ReelsScraper:
             code: Reel code
         """
         try:
+            # Use SafeReelEncoder for JSON serialization
+            reel_json = json.dumps(reel, cls=SafeReelEncoder)
+
             reel_db = Reel(
                 post_id=getattr(reel, "id", None),
                 code=code,
@@ -171,11 +175,14 @@ class ReelsScraper:
                 caption=getattr(reel, "caption_text", ""),
                 file_name=filename,
                 file_path=filepath,
-                data=json.dumps(reel, cls=ReelEncoder),
+                data=reel_json,  # Safely serialized JSON
                 is_posted=False,
+                created_at=datetime.now(),
             )
             self.session.add(reel_db)
             self.session.commit()
+
+            logger.debug(f"Reel {code} saved to database successfully")
 
         except Exception as e:
             logger.error(f"Database error saving reel {code}: {str(e)}")
