@@ -24,6 +24,7 @@ class Logger:
     def error(self, msg):
         print(msg)
 
+
 # Function to download shorts video using yt-dlp
 def download_shorts_video(video_url: str, output_directory: str = "downloads") -> str:
     ydl_opts = {
@@ -38,6 +39,7 @@ def download_shorts_video(video_url: str, output_directory: str = "downloads") -
         output_filename = ydl.prepare_filename(info_dict)
         ydl.process_info(info_dict)
         return output_filename
+
 
 # Function to extract channel ID from the given channel link
 def extract_channel_id(channel_link: str) -> str:
@@ -57,16 +59,18 @@ def extract_channel_id(channel_link: str) -> str:
         else:
             raise ValueError("Unable to fetch channel link")
 
+
 # Function to get shorts videos from a YouTube channel using YouTube API
 def get_shorts_videos(channel_id: str, api_key: str, max_results: int = 50):
     youtube = build("youtube", "v3", developerKey=api_key)
 
-    channel_response = youtube.channels().list(
-        part="contentDetails",
-        id=channel_id
-    ).execute()
+    channel_response = (
+        youtube.channels().list(part="contentDetails", id=channel_id).execute()
+    )
 
-    uploads_playlist_id = channel_response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    uploads_playlist_id = channel_response["items"][0]["contentDetails"][
+        "relatedPlaylists"
+    ]["uploads"]
 
     shorts_videos = []
     next_page_token = None
@@ -76,7 +80,7 @@ def get_shorts_videos(channel_id: str, api_key: str, max_results: int = 50):
             part="snippet",
             maxResults=max_results,
             playlistId=uploads_playlist_id,
-            pageToken=next_page_token
+            pageToken=next_page_token,
         )
 
         playlist_items = playlist_items_request.execute()
@@ -86,19 +90,25 @@ def get_shorts_videos(channel_id: str, api_key: str, max_results: int = 50):
             video_title = item["snippet"]["title"]
             video_description = item["snippet"]["description"]
 
-            if "#shorts" in video_title.lower() or "#shorts" in video_description.lower():
-                shorts_videos.append({
-                    "id": video_id,
-                    "title": video_title,
-                    "description": video_description,
-                    "url": f"https://www.youtube.com/watch?v={video_id}"
-                })
+            if (
+                "#shorts" in video_title.lower()
+                or "#shorts" in video_description.lower()
+            ):
+                shorts_videos.append(
+                    {
+                        "id": video_id,
+                        "title": video_title,
+                        "description": video_description,
+                        "url": f"https://www.youtube.com/watch?v={video_id}",
+                    }
+                )
 
         next_page_token = playlist_items.get("nextPageToken")
         if not next_page_token:
             break
 
     return shorts_videos
+
 
 # Main function to process each channel and download shorts videos
 def main():
@@ -117,15 +127,17 @@ def main():
 
         for short_video in shorts:
             print(f"Downloading {short_video['title']} ({short_video['url']})")
-            exists = session.query(Reel).filter_by(code=short_video['id']).first()
+            exists = session.query(Reel).filter_by(code=short_video["id"]).first()
             if not exists:
-                downloaded_file = download_shorts_video(short_video["url"], output_directory)
+                downloaded_file = download_shorts_video(
+                    short_video["url"], output_directory
+                )
                 print(f"Downloaded to: {downloaded_file}")
                 reel_db = Reel(
-                    post_id=short_video['id'],
-                    code=short_video['id'],
+                    post_id=short_video["id"],
+                    code=short_video["id"],
                     account=channel_id,
-                    caption=short_video['title'],
+                    caption=short_video["title"],
                     file_name=os.path.basename(downloaded_file),
                     file_path=downloaded_file,
                     data=json.dumps(short_video),
@@ -134,12 +146,13 @@ def main():
                 )
                 session.add(reel_db)
                 session.commit()
-                
+
     session.close()
 
     # Interval
+
+
 #     time.sleep(int(config.YOUTUBE_SCRAPING_INTERVAL_IN_MINS) * 60)
 
 # if __name__ == "__main__":
 #     main()
-   
