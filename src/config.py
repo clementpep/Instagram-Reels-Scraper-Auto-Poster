@@ -42,8 +42,8 @@ POSTING_INTERVAL_IN_MIN = 72  # Every 15 Minutes
 SCRAPER_INTERVAL_IN_MIN = 720  # Every 12 hours
 
 # Instagram Username & Password
-USERNAME = "memify_com"
-PASSWORD = "5248Graham!"
+USERNAME = ""
+PASSWORD = ""
 
 # Account List for scraping
 ACCOUNTS = [
