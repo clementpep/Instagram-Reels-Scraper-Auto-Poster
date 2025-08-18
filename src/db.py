@@ -11,7 +11,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import json
-import config
+from config import config
 from datetime import datetime
 
 # Create the database engine

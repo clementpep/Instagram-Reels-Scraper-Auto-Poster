@@ -17,7 +17,7 @@ from rich.live import Live
 import time
 
 # Reels-AutoPilot config and helper
-import config
+from config import config
 import helpers as Helper
 import logging
 

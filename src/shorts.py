@@ -5,7 +5,7 @@ import requests
 from googleapiclient.discovery import build
 import yt_dlp
 from yt_dlp.postprocessor.common import PostProcessor
-import config
+from config import config
 import json
 import time
 from db import Session, Reel

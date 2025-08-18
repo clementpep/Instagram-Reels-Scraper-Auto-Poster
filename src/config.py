@@ -1,88 +1,108 @@
+# ================================================================================
+# FILE: config.py (Enhanced version)
+# Description: Enhanced configuration management with validation and type hints
+# ================================================================================
+
 import os
 from dotenv import load_dotenv
+from typing import List, Optional
+from dataclasses import dataclass, field
+from logger_config import logger
 
 # Load environment variables from .env file
 load_dotenv()
 
-# --------------------------------------------------------------------------------------------------#
-# Global Configurations                                                                            #
-# --------------------------------------------------------------------------------------------------#
 
-# Config Variables
-CURRENT_DIR = os.getcwd() + os.sep
+@dataclass
+class AppConfig:
+    """
+    Application configuration with validation and type safety.
+    """
 
-# SQLite DB path
-DB_PATH = CURRENT_DIR + ".." + os.sep + "database" + os.sep + "sqlite.db"
+    # Paths
+    CURRENT_DIR: str = os.getcwd() + os.sep
+    DB_PATH: str = field(
+        default_factory=lambda: os.path.join(os.getcwd(), "..", "database", "sqlite.db")
+    )
+    DOWNLOAD_DIR: str = field(
+        default_factory=lambda: os.path.join(os.getcwd(), "..", "downloads")
+    )
+    LOG_DIR: str = field(default_factory=lambda: os.path.join(os.getcwd(), "logs"))
 
-# Download Path
-DOWNLOAD_DIR = (
-    CURRENT_DIR + ".." + os.sep + "downloads" + os.sep
-)  # Path of folder where files will be stored
+    # File Management
+    IS_REMOVE_FILES: int = 1
+    REMOVE_FILE_AFTER_MINS: int = 120
 
-# IS REMOVE FILES
-IS_REMOVE_FILES = 1
+    # Instagram Configuration
+    IS_ENABLED_REELS_SCRAPER: int = 1
+    IS_ENABLED_AUTO_POSTER: int = 1
+    IS_POST_TO_STORY: int = 1
+    FETCH_LIMIT: int = 5
+    POSTING_INTERVAL_IN_MIN: int = 30
+    SCRAPER_INTERVAL_IN_MIN: int = 720
+    ACCOUNTS: List[str] = field(
+        default_factory=lambda: ["creustel", "elouen_la_baleine", "victorhabchy"]
+    )
+    LIKE_AND_VIEW_COUNTS_DISABLED: int = 0
+    DISABLE_COMMENTS: int = 0
+    HASHTAGS: str = "#reels #shorts #likes #follow #ReelsAutoPilot"
 
-# Remove Posted Files Interval
-REMOVE_FILE_AFTER_MINS = 120  # every two hours
+    # YouTube Configuration
+    IS_ENABLED_YOUTUBE_SCRAPING: int = 1
+    YOUTUBE_SCRAPING_INTERVAL_IN_MINS: int = 360
+    CHANNEL_LINKS: List[str] = field(
+        default_factory=lambda: [
+            "https://www.youtube.com/@SuprOrdinary",
+            "https://www.youtube.com/@DrexLee",
+        ]
+    )
 
-# --------------------------------------------------------------------------------------------------#
-# Instagram Configurations                                                                         #
-# --------------------------------------------------------------------------------------------------#
+    # Authentication (will be loaded from database)
+    USERNAME: str = os.getenv("USERNAME", "")
+    PASSWORD: str = os.getenv("PASSWORD", "")
+    YOUTUBE_API_KEY: str = os.getenv("YOUTUBE_API_KEY", "")
 
-# IS RUN REELS SCRAPER
-IS_ENABLED_REELS_SCRAPER = 1
+    def __post_init__(self):
+        """
+        Validate configuration after initialization.
+        """
+        self._create_directories()
+        self._validate_config()
 
-# IS RUN AUTO POSTER
-IS_ENABLED_AUTO_POSTER = 1
+    def _create_directories(self):
+        """Create necessary directories if they don't exist."""
+        for directory in [
+            self.DOWNLOAD_DIR,
+            self.LOG_DIR,
+            os.path.dirname(self.DB_PATH),
+        ]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                logger.info(f"Created directory: {directory}")
 
-# IS POST STORY
-IS_POST_TO_STORY = 1
+    def _validate_config(self):
+        """Validate configuration values."""
+        validations = [
+            (self.FETCH_LIMIT > 0, "FETCH_LIMIT must be positive"),
+            (
+                self.POSTING_INTERVAL_IN_MIN > 0,
+                "POSTING_INTERVAL_IN_MIN must be positive",
+            ),
+            (
+                self.SCRAPER_INTERVAL_IN_MIN > 0,
+                "SCRAPER_INTERVAL_IN_MIN must be positive",
+            ),
+            (
+                self.REMOVE_FILE_AFTER_MINS > 0,
+                "REMOVE_FILE_AFTER_MINS must be positive",
+            ),
+        ]
 
-# Fetch LIMIT for scraper script
-FETCH_LIMIT = 5
-
-# Posting interval in Minutes
-POSTING_INTERVAL_IN_MIN = 30  # Every 15 Minutes
-
-# Scraper interval in Minutes
-SCRAPER_INTERVAL_IN_MIN = 720  # Every 12 hours
-
-# Account List for scraping
-ACCOUNTS = [
-    "creustel",
-    "elouen_la_baleine",
-    "victorhabchy",
-    # "totalgaming_official",
-    # "carryminati",
-    # "techno_gamerz",
-    # "payalgamingg",
-    # "dynamo__gaming",
-]
-
-# like_and_view_counts_disabled
-LIKE_AND_VIEW_COUNTS_DISABLED = 0
-
-# disable_comments
-DISABLE_COMMENTS = 0
-
-# HASHTAGS to add while Posting
-HASHTAGS = "#reels #shorts #likes #follow #Reels-AutoPilot"
-
-# --------------------------------------------------------------------------------------------------#
-# Youtube Configurations                                                                           #
-# --------------------------------------------------------------------------------------------------#
-
-# IS RUN YOUTUBE SCRAPER
-IS_ENABLED_YOUTUBE_SCRAPING = 1
+        for condition, message in validations:
+            if not condition:
+                logger.error(f"Configuration validation failed: {message}")
+                raise ValueError(message)
 
 
-# IS RUN YOUTUBE SCRAPER
-YOUTUBE_SCRAPING_INTERVAL_IN_MINS = 360
-
-
-# YouTube Channel List short for scraping
-CHANNEL_LINKS = [
-    "https://www.youtube.com/@SuprOrdinary",
-    "https://www.youtube.com/@DrexLee",
-    # "https://www.youtube.com/@",
-]
+# Create global config instance
+config = AppConfig()

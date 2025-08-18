@@ -1,6 +1,6 @@
 import os
 from db import Session, Reel, ReelEncoder
-import config
+from config import config
 import time
 import helpers as Helper
 from helpers import print

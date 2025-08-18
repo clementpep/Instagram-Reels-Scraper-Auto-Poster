@@ -10,7 +10,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 from rich import print
-import config as mainConfig
+from config import config as mainConfig
 from db import Session, Config
 import helpers as Helper
 from datetime import datetime

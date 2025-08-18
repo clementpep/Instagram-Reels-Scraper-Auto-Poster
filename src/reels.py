@@ -1,103 +1,232 @@
+# ================================================================================
+# FILE: reels.py (Enhanced version)
+# Description: Enhanced reels scraper with better error handling and logging
+# ================================================================================
+
 from instagrapi import Client
+from instagrapi.exceptions import MediaNotFound, UserNotFound
 from db import Session, Reel, ReelEncoder
 import json
-import config
-import time
-import auth
+from config import config
+import os
+from typing import List, Optional
+from logger_config import logger
 import helpers as Helper
-from helpers import print
 
 
-# Function to fetch reel from given account
-def get_reels(account, api):
-    user_id = api.user_id_from_username(account)
-    medias = api.user_medias(user_id, config.FETCH_LIMIT)
-    reels = [
-        item for item in medias if (item.product_type == "clips", item.media_type == 2)
-    ]  # Filter for reels (product_type == 3)
-    return reels
+class ReelsScraper:
+    """
+    Handles scraping of Instagram Reels with robust error handling.
+    """
+
+    def __init__(self, api: Client):
+        """
+        Initialize scraper with authenticated client.
+
+        Args:
+            api: Authenticated Instagram client
+        """
+        self.api = api
+        self.session = Session()
+
+    def scrape_account(self, account: str) -> List:
+        """
+        Scrape reels from a single Instagram account.
+
+        Args:
+            account: Instagram username to scrape
+
+        Returns:
+            List of reel objects
+        """
+        try:
+            logger.info(f"Starting to scrape account: {account}")
+
+            # Get user ID
+            user_id = self.api.user_id_from_username(account)
+            logger.debug(f"User ID for {account}: {user_id}")
+
+            # Fetch media
+            medias = self.api.user_medias(user_id, config.FETCH_LIMIT)
+            logger.debug(f"Fetched {len(medias)} media items from {account}")
+
+            # Filter for reels
+            reels = [
+                item
+                for item in medias
+                if getattr(item, "product_type", None) == "clips"
+                and getattr(item, "media_type", None) == 2
+            ]
+
+            logger.info(f"Found {len(reels)} reels from {account}")
+            return reels
+
+        except UserNotFound:
+            logger.error(f"User not found: {account}")
+            return []
+        except Exception as e:
+            logger.error(f"Error scraping {account}: {type(e).__name__}: {str(e)}")
+            return []
+
+    def download_and_save_reel(self, reel, account: str) -> bool:
+        """
+        Download a reel and save it to the database.
+
+        Args:
+            reel: Reel object from Instagram API
+            account: Account username
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            video_url = getattr(reel, "video_url", None)
+            code = getattr(reel, "code", None)
+
+            if not video_url or not code:
+                logger.warning(f"Missing video_url or code for reel from {account}")
+                return False
+
+            # Check if already exists
+            if self.session.query(Reel).filter_by(code=code).first():
+                logger.debug(f"Reel already exists: {code}")
+                return False
+
+            # Download video
+            filename = self._get_filename_from_url(video_url)
+            filepath = os.path.join(config.DOWNLOAD_DIR, filename)
+
+            logger.info(f"Downloading reel {code} from {account}")
+            self.api.video_download_by_url(video_url, folder=config.DOWNLOAD_DIR)
+
+            # Verify download
+            if not self._verify_download(filepath):
+                logger.error(f"Download verification failed for {code}")
+                return False
+
+            # Save to database
+            self._save_to_database(reel, account, filename, filepath, code)
+            logger.info(f"Successfully saved reel {code} to database")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error downloading reel {code}: {type(e).__name__}: {str(e)}")
+            return False
+
+    def _get_filename_from_url(self, url: str) -> str:
+        """
+        Extract filename from URL.
+
+        Args:
+            url: Video URL
+
+        Returns:
+            Filename string
+        """
+        path = url.split("/")
+        filename = path[-1]
+        return filename.split("?")[0]
+
+    def _verify_download(self, filepath: str, min_size: int = 10000) -> bool:
+        """
+        Verify that a file was downloaded successfully.
+
+        Args:
+            filepath: Path to downloaded file
+            min_size: Minimum acceptable file size in bytes
+
+        Returns:
+            True if file is valid, False otherwise
+        """
+        if not os.path.exists(filepath):
+            logger.error(f"File does not exist: {filepath}")
+            return False
+
+        file_size = os.path.getsize(filepath)
+        if file_size < min_size:
+            logger.error(f"File too small ({file_size} bytes): {filepath}")
+            return False
+
+        logger.debug(f"File verified: {filepath} ({file_size} bytes)")
+        return True
+
+    def _save_to_database(
+        self, reel, account: str, filename: str, filepath: str, code: str
+    ):
+        """
+        Save reel information to database.
+
+        Args:
+            reel: Reel object
+            account: Account username
+            filename: Downloaded filename
+            filepath: Full file path
+            code: Reel code
+        """
+        try:
+            reel_db = Reel(
+                post_id=getattr(reel, "id", None),
+                code=code,
+                account=account,
+                caption=getattr(reel, "caption_text", ""),
+                file_name=filename,
+                file_path=filepath,
+                data=json.dumps(reel, cls=ReelEncoder),
+                is_posted=False,
+            )
+            self.session.add(reel_db)
+            self.session.commit()
+
+        except Exception as e:
+            logger.error(f"Database error saving reel {code}: {str(e)}")
+            self.session.rollback()
+            raise
+
+    def run(self):
+        """
+        Main execution method for scraping all configured accounts.
+        """
+        Helper.load_all_config()
+
+        total_downloaded = 0
+        failed_accounts = []
+
+        logger.info(f"Starting reels scraping for {len(config.ACCOUNTS)} accounts")
+
+        for account in config.ACCOUNTS:
+            try:
+                reels = self.scrape_account(account)
+                downloaded = 0
+
+                for reel in reels:
+                    if self.download_and_save_reel(reel, account):
+                        downloaded += 1
+
+                total_downloaded += downloaded
+                logger.info(f"Downloaded {downloaded} new reels from {account}")
+
+            except Exception as e:
+                logger.error(f"Failed to process account {account}: {str(e)}")
+                failed_accounts.append(account)
+
+        logger.info(f"Scraping complete. Downloaded {total_downloaded} new reels")
+
+        if failed_accounts:
+            logger.warning(f"Failed accounts: {', '.join(failed_accounts)}")
+
+        self.session.close()
 
 
-# Function to get file name from URL
-def get_file_name_from_url(url):
-    path = url.split("/")
-    filename = path[-1]
-    return filename.split("?")[0]
+def main(api: Client):
+    """
+    Legacy main function for backward compatibility.
 
+    Args:
+        api: Authenticated Instagram client
+    """
+    if not api:
+        logger.error("No authenticated client provided")
+        return
 
-# Function to get file path
-def get_file_path(file_name):
-    return config.DOWNLOAD_DIR + file_name
-
-
-# Magic Starts Here
-def main(api):
-    Helper.load_all_config()
-    session = Session()
-    for account in config.ACCOUNTS:
-
-        reels_by_account = get_reels(account, api)
-
-        for reel in reels_by_account:
-            # print(f"Reel ID: {reel.id}, Caption: {reel.caption_text}, Url : {reel.video_url}")
-            if reel.video_url != None:
-                try:
-                    print(
-                        "------------------------------------------------------------------------------------"
-                    )
-                    print("Checking if reel : " + reel.code + " already downloaded")
-                    exists = session.query(Reel).filter_by(code=reel.code).first()
-                    # exists = False
-                    if not exists:
-                        filename = get_file_name_from_url(reel.video_url)
-                        filepath = get_file_path(filename)
-
-                        print(
-                            "Downloading Reel From : "
-                            + account
-                            + " | Code : "
-                            + reel.code
-                        )
-                        api.video_download_by_url(
-                            reel.video_url, folder=config.DOWNLOAD_DIR
-                        )
-                        print(
-                            "Downloaded Reel Code : "
-                            + reel.code
-                            + " | Path : "
-                            + filepath
-                        )
-                        print("<---------Database Insert Start--------->")
-
-                        reel_db = Reel(
-                            post_id=reel.id,
-                            code=reel.code,
-                            account=account,
-                            caption=reel.caption_text,
-                            file_name=filename,
-                            file_path=filepath,
-                            data=json.dumps(reel, cls=ReelEncoder),
-                            is_posted=False,
-                            # posted_at = NULL
-                        )
-                        session.add(reel_db)
-                        session.commit()
-
-                        print("Inserting Record...")
-                        # print('Insert Reel Record : ' + json.dumps(reel, cls=ReelEncoder) )
-                        print("<---------Database Insert End--------->")
-                    print(
-                        "------------------------------------------------------------------------------------"
-                    )
-                except:
-                    # Do Nothing
-                    pass
-
-    session.close()
-    # time.sleep(int(config.SCRAPER_INTERVAL_IN_MIN)*60)
-    # main(api)
-
-
-# if __name__ == "__main__":
-#     api = auth.login()
-#     main(api)
+    scraper = ReelsScraper(api)
+    scraper.run()

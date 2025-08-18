@@ -14,7 +14,7 @@ from rich import box
 from rich.console import Console, Group
 
 # Reels-AutoPilot Config
-import config
+from config import config
 import logging
 
 logging.basicConfig(
