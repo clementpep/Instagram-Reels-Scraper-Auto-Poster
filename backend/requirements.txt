@@ -1,0 +1,11 @@
+Flask==2.3.3
+Flask-CORS==4.0.0
+SQLAlchemy==2.0.21
+python-dotenv==1.0.0
+instagrapi==1.16.33
+moviepy==1.0.3
+Pillow==10.0.1
+rich==13.5.2
+yt-dlp==2023.7.6
+google-api-python-client==2.108.0
+requests>=2.32.2,<3

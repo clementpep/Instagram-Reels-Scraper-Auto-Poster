@@ -40,13 +40,13 @@ def make_layout() -> Layout:
     layout = Layout(name="root")
 
     layout.split(
-        Layout(name="header", size=20),
+        # Layout(name="header", size=20),
         Layout(name="main", ratio=1),
     )
-    layout["header"].split_row(
-        Layout(name="logo", minimum_size=20),
-        Layout(name="links", ratio=1, minimum_size=20),
-    )
+    # layout["header"].split_row(
+    #     Layout(name="logo", minimum_size=20),
+    #     Layout(name="links", ratio=1, minimum_size=20),
+    # )
     layout["main"].split_row(
         Layout(name="side"),
         Layout(name="body", ratio=2, minimum_size=60),

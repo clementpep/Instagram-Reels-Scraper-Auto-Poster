@@ -2,7 +2,8 @@
 # FILE: app.py (Enhanced version)
 # Description: Main application loop with improved scheduling and error recovery
 # ================================================================================
-
+import threading
+from backend.api import app as flask_app
 import time
 import sys
 from datetime import datetime, timedelta
@@ -24,7 +25,7 @@ class ReelsAutoPilot:
     Main application orchestrator with enhanced visibility and scheduling.
     """
 
-    def __init__(self, dev_mode: bool = False):
+    def __init__(self, dev_mode: bool = False, enable_api: bool = True):
         """
         Initialize the application with configuration and scheduling.
 
@@ -71,6 +72,20 @@ class ReelsAutoPilot:
 
         logger.info("ReelsAutoPilot initialized")
         self._log_initial_status()
+
+        self.enable_api = enable_api
+        if enable_api:
+            self.start_api_server()
+
+    def start_api_server(self):
+        """Start Flask API server in background thread"""
+
+        def run_api():
+            flask_app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+
+        api_thread = threading.Thread(target=run_api, daemon=True)
+        api_thread.start()
+        logger.info("🌐 Dashboard API started on http://localhost:5000")
 
     def _log_initial_status(self):
         """Log initial configuration and schedule."""
@@ -362,7 +377,7 @@ def main():
         if dev_mode:
             logger.info("🔧 Starting in DEVELOPMENT mode (shorter intervals)")
 
-        app = ReelsAutoPilot(dev_mode=dev_mode)
+        app = ReelsAutoPilot(dev_mode=dev_mode, enable_api=True)
         app.run()
 
     except Exception as e:
