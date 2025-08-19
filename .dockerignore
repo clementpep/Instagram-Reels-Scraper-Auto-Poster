@@ -1,0 +1,70 @@
+# Git
+.git
+.gitignore
+README.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.pytest_cache
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.venv
+venv/
+
+# Node.js (pour éviter les conflits si lancé depuis la racine)
+node_modules
+npm-debug.log
+.npm
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Frontend dist (sera build dans le container)
+frontend/dist
+frontend/node_modules
+
+# Données sensibles (seront montées comme volumes)
+database/
+downloads/
+logs/
+session.json
+
+# Environment files
+.env
+.env.local
+.env.production

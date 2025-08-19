@@ -33,8 +33,12 @@ import {
  * API service class for handling dashboard data requests
  */
 class DashboardAPI {
-  constructor(baseURL = 'http://localhost:5000') {
-    this.baseURL = baseURL;
+  constructor() {
+    // Utilise la variable d'environnement ou fallback vers localhost
+    this.baseURL = import.meta.env.REACT_APP_API_URL || 
+                   (window.location.protocol + '//' + window.location.hostname + ':5000');
+    
+    console.log('API Base URL:', this.baseURL);
   }
 
   /**
@@ -43,14 +47,44 @@ class DashboardAPI {
    */
   async fetchDashboardData() {
     try {
-      const response = await fetch(`${this.baseURL}/api/dashboard`);
+      const response = await fetch(`${this.baseURL}/api/dashboard`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        // Ajout pour gérer les CORS en Docker
+        mode: 'cors',
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      
+      const data = await response.json();
+      console.log('Dashboard data received:', data);
+      return data;
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      console.warn('Falling back to mock data');
       return this.getMockData(); // Fallback to mock data
+    }
+  }
+
+  /**
+   * Health check endpoint
+   * @returns {Promise<boolean>} API health status
+   */
+  async checkHealth() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/health`, {
+        method: 'GET',
+        timeout: 5000,
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return false;
     }
   }
 

@@ -1,0 +1,68 @@
+services:
+  # Backend Python/Flask
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: reels-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+    volumes:
+      - ./database:/app/database
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+    networks:
+      - reels-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:5000
+    container_name: reels-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - reels-network
+    restart: unless-stopped
+
+  # Nginx reverse proxy (optionnel mais recommandé pour la prod)
+  nginx:
+    image: nginx:alpine
+    container_name: reels-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - reels-network
+    restart: unless-stopped
+    profiles:
+      - production  # Activé seulement avec --profile production
+
+networks:
+  reels-network:
+    driver: bridge
+
+volumes:
+  database:
+  downloads:
+  logs:
