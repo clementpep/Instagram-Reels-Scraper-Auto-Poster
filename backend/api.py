@@ -11,13 +11,10 @@ import os
 import json
 from typing import Dict, List, Any
 
-# Add the src directory to Python path to import our modules
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from db import Session, Reel, Config
-from config import config
-import helpers as Helper
-from logger_config import logger
+from backend.src.db import Session, Reel, Config
+from backend.src.config import config
+import backend.src.helpers as Helper
+from backend.src.logger_config import logger
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend

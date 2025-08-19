@@ -8,9 +8,9 @@ import psutil
 import threading
 from datetime import datetime, timedelta
 from typing import Dict, List
-from config import config
-from logger_config import logger
-from db import Session, Reel
+from backend.src.config import config
+from backend.src.logger_config import logger
+from backend.src.db import Session, Reel
 
 
 class ApplicationMonitor:

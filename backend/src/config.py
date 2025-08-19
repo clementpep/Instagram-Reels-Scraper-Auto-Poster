@@ -7,10 +7,13 @@ import os
 from dotenv import load_dotenv
 from typing import List, Optional
 from dataclasses import dataclass, field
-from logger_config import logger
+from backend.src.logger_config import logger
+from pathlib import Path
 
 # Load environment variables from .env file
 load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 @dataclass
@@ -20,14 +23,10 @@ class AppConfig:
     """
 
     # Paths
-    CURRENT_DIR: str = os.getcwd() + os.sep
-    DB_PATH: str = field(
-        default_factory=lambda: os.path.join(os.getcwd(), "..", "database", "sqlite.db")
-    )
-    DOWNLOAD_DIR: str = field(
-        default_factory=lambda: os.path.join(os.getcwd(), "..", "downloads")
-    )
-    LOG_DIR: str = field(default_factory=lambda: os.path.join(os.getcwd(), "logs"))
+    CURRENT_DIR: str = str(BASE_DIR)
+    DB_PATH: str = str(BASE_DIR / "database" / "sqlite.db")
+    DOWNLOAD_DIR: str = str(BASE_DIR / "downloads")
+    LOG_DIR: str = str(BASE_DIR / "database" / "logs")
 
     # File Management
     IS_REMOVE_FILES: int = 1
@@ -41,7 +40,13 @@ class AppConfig:
     POSTING_INTERVAL_IN_MIN: int = 30
     SCRAPER_INTERVAL_IN_MIN: int = 720
     ACCOUNTS: List[str] = field(
-        default_factory=lambda: ["creustel", "elouen_la_baleine", "victorhabchy"]
+        default_factory=lambda: [
+            "karenxcheng",
+            "kevinbparry",
+            "creustel",
+            "elouen_la_baleine",
+            "victorhabchy",
+        ]
     )
     LIKE_AND_VIEW_COUNTS_DISABLED: int = 0
     DISABLE_COMMENTS: int = 0
@@ -52,6 +57,7 @@ class AppConfig:
     YOUTUBE_SCRAPING_INTERVAL_IN_MINS: int = 360
     CHANNEL_LINKS: List[str] = field(
         default_factory=lambda: [
+            "https://www.youtube.com/@AlanChikinChow",
             "https://www.youtube.com/@SuprOrdinary",
             "https://www.youtube.com/@DrexLee",
         ]

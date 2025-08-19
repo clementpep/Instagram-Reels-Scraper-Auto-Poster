@@ -8,8 +8,8 @@ Database inspection and repair tool.
 Use this to check the current state of your database.
 """
 
-from db import Session, Config, Reel
-from logger_config import logger
+from backend.src.db import Session, Config, Reel
+from backend.src.logger_config import logger
 from datetime import datetime
 import json
 

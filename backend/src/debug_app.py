@@ -8,14 +8,14 @@ import sys
 from datetime import datetime, timedelta
 import random
 from typing import Optional
-from logger_config import logger
-from config import config
-import helpers as Helper
-import reels
-import poster
-import shorts
-import remover
-import auth
+from backend.src.logger_config import logger
+from backend.src.config import config
+import backend.src.helpers as Helper
+import backend.src.reels as reels
+import backend.src.poster
+import backend.src.shorts as shorts
+import backend.src.remover as remover
+import backend.src.auth as auth
 from instagrapi import Client
 
 

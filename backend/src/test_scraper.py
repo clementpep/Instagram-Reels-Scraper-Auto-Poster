@@ -7,10 +7,10 @@
 Test script to verify Instagram scraping functionality.
 """
 
-from logger_config import logger
+from backend.src.logger_config import logger
+from backend.src.reels import ReelsScraper
+from backend.src.db import Session, Config
 import auth
-from reels import ReelsScraper
-from db import Session, Config
 
 
 def test_single_account(account_name: str = None):

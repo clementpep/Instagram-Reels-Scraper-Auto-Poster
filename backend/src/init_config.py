@@ -8,8 +8,8 @@ Script to initialize or verify database configuration.
 Run this before starting the main application.
 """
 
-from db import Session, Config
-from logger_config import logger
+from backend.src.db import Session, Config
+from backend.src.logger_config import logger
 from datetime import datetime
 import sys
 import os
