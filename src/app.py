@@ -21,249 +21,352 @@ from instagrapi import Client
 
 class ReelsAutoPilot:
     """
-    Main application orchestrator with robust scheduling and error handling.
+    Main application orchestrator with enhanced visibility and scheduling.
     """
 
-    def __init__(self):
-        """Initialize the application with configuration and scheduling."""
+    def __init__(self, dev_mode: bool = False):
+        """
+        Initialize the application with configuration and scheduling.
+
+        Args:
+            dev_mode: If True, runs with shorter intervals for testing
+        """
         self.api: Optional[Client] = None
         self.is_running = True
+        self.dev_mode = dev_mode
 
         # Load configuration
         Helper.load_all_config()
 
-        # Initialize schedulers
-        self.next_reels_scraper_run = datetime.now()
-        self.next_poster_run = datetime.now()
-        self.next_remover_run = datetime.now()
-        self.next_youtube_run = datetime.now()
+        # Set intervals based on mode
+        if dev_mode:
+            logger.info("🔧 DEV MODE: Using shorter intervals")
+            self.scraper_interval = 5  # 5 minutes instead of 12 hours
+            self.poster_interval = 2  # 2 minutes instead of 30 minutes
+            self.remover_interval = 10  # 10 minutes instead of 2 hours
+            self.youtube_interval = 15  # 15 minutes instead of 6 hours
+        else:
+            self.scraper_interval = int(getattr(config, "SCRAPER_INTERVAL_IN_MIN", 720))
+            self.poster_interval = int(getattr(config, "POSTING_INTERVAL_IN_MIN", 30))
+            self.remover_interval = int(getattr(config, "REMOVE_FILE_AFTER_MINS", 120))
+            self.youtube_interval = int(
+                getattr(config, "YOUTUBE_SCRAPING_INTERVAL_IN_MINS", 360)
+            )
+
+        # Initialize schedulers with staggered start times
+        current_time = datetime.now()
+        self.next_reels_scraper_run = current_time
+        self.next_poster_run = current_time + timedelta(minutes=1)
+        self.next_remover_run = current_time + timedelta(minutes=2)
+        self.next_youtube_run = current_time + timedelta(minutes=3)
+
+        # Status tracking
+        self.last_status_print = datetime.now()
+        self.status_interval = 300 if not dev_mode else 60  # 5 min normal, 1 min dev
+        self.last_activity = "Application started"
 
         # Error tracking
         self.consecutive_errors = 0
         self.max_consecutive_errors = 5
 
         logger.info("ReelsAutoPilot initialized")
+        self._log_initial_status()
+
+    def _log_initial_status(self):
+        """Log initial configuration and schedule."""
+        mode = "🔧 DEVELOPMENT" if self.dev_mode else "🚀 PRODUCTION"
+        logger.info(f"Running in {mode} mode")
+
+        logger.info("📊 Configuration:")
+        logger.info(
+            f"   - Reels scraper: {'✅ ON' if self._is_enabled('IS_ENABLED_REELS_SCRAPER') else '❌ OFF'} (every {self.scraper_interval} min)"
+        )
+        logger.info(
+            f"   - Auto poster: {'✅ ON' if self._is_enabled('IS_ENABLED_AUTO_POSTER') else '❌ OFF'} (every {self.poster_interval} min)"
+        )
+        logger.info(
+            f"   - File remover: {'✅ ON' if self._is_enabled('IS_REMOVE_FILES') else '❌ OFF'} (every {self.remover_interval} min)"
+        )
+        logger.info(
+            f"   - YouTube scraper: {'✅ ON' if self._is_enabled('IS_ENABLED_YOUTUBE_SCRAPING') else '❌ OFF'} (every {self.youtube_interval} min)"
+        )
+
+        logger.info("📅 Next execution times:")
+        logger.info(
+            f"   - Reels scraper: {self.next_reels_scraper_run.strftime('%H:%M:%S')}"
+        )
+        logger.info(f"   - Auto poster: {self.next_poster_run.strftime('%H:%M:%S')}")
+        logger.info(f"   - File remover: {self.next_remover_run.strftime('%H:%M:%S')}")
+        logger.info(
+            f"   - YouTube scraper: {self.next_youtube_run.strftime('%H:%M:%S')}"
+        )
+
+    def _is_enabled(self, config_key: str) -> bool:
+        """Safely check if a configuration is enabled."""
+        value = getattr(config, config_key, 0)
+
+        if isinstance(value, str):
+            return value.strip() == "1"
+        elif isinstance(value, int):
+            return value == 1
+        else:
+            return False
 
     def initialize_instagram(self) -> bool:
-        """
-        Initialize Instagram client if needed.
-
-        Returns:
-            True if successful, False otherwise
-        """
-        if config.IS_ENABLED_REELS_SCRAPER or config.IS_ENABLED_AUTO_POSTER:
+        """Initialize Instagram client if needed."""
+        if self._is_enabled("IS_ENABLED_REELS_SCRAPER") or self._is_enabled(
+            "IS_ENABLED_AUTO_POSTER"
+        ):
             if not self.api:
-                logger.info("Initializing Instagram client")
+                logger.info("🔑 Initializing Instagram client...")
                 self.api = auth.login()
 
                 if not self.api:
-                    logger.critical("Failed to initialize Instagram client")
+                    logger.critical("❌ Failed to initialize Instagram client")
                     return False
+
+                logger.info("✅ Instagram client ready")
 
         return True
 
     def run_reels_scraper(self):
-        """Execute reels scraping task with error handling."""
+        """Execute reels scraping task."""
         try:
-            logger.info("=" * 50)
-            logger.info("Starting Reels Scraper")
+            logger.info("🎬 === REELS SCRAPER STARTING ===")
+            self.last_activity = "Scraping reels"
 
             if not self.api:
-                logger.error("Instagram client not initialized")
+                logger.error("❌ Instagram client not initialized")
                 return
 
             reels.main(self.api)
 
             # Schedule next run
             self.next_reels_scraper_run = datetime.now() + timedelta(
-                seconds=int(config.SCRAPER_INTERVAL_IN_MIN) * 60
+                minutes=self.scraper_interval
             )
-
             logger.info(
-                f"Next scraping scheduled for: {self.next_reels_scraper_run.strftime('%Y-%m-%d %H:%M:%S')}"
+                f"📅 Next scraping: {self.next_reels_scraper_run.strftime('%H:%M:%S')}"
             )
             self.consecutive_errors = 0
 
         except Exception as e:
-            logger.error(f"Reels scraper failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ Reels scraper failed: {str(e)}", exc_info=True)
             self.handle_error()
 
     def run_poster(self):
-        """Execute posting task with error handling."""
+        """Execute posting task."""
         try:
-            logger.info("=" * 50)
-            logger.info("Starting Reel Poster")
+            logger.info("📤 === AUTO POSTER STARTING ===")
+            self.last_activity = "Posting reel"
 
             if not self.api:
-                logger.error("Instagram client not initialized")
+                logger.error("❌ Instagram client not initialized")
                 return
 
             poster.main(self.api)
 
-            # Add random delay to avoid detection
+            # Schedule next run with random delay
             random_delay = random.randint(5, 20)
-
-            # Schedule next run
             self.next_poster_run = datetime.now() + timedelta(
-                seconds=(int(config.POSTING_INTERVAL_IN_MIN) * 60) + random_delay
+                minutes=self.poster_interval, seconds=random_delay
             )
-
-            logger.info(
-                f"Next posting scheduled for: {self.next_poster_run.strftime('%Y-%m-%d %H:%M:%S')}"
-            )
+            logger.info(f"📅 Next posting: {self.next_poster_run.strftime('%H:%M:%S')}")
             self.consecutive_errors = 0
 
         except Exception as e:
-            logger.error(f"Poster failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ Poster failed: {str(e)}", exc_info=True)
             self.handle_error()
 
     def run_remover(self):
-        """Execute file removal task with error handling."""
+        """Execute file removal task."""
         try:
-            logger.info("=" * 50)
-            logger.info("Starting File Remover")
+            logger.info("🗑️ === FILE REMOVER STARTING ===")
+            self.last_activity = "Removing files"
 
             remover.main()
 
             # Schedule next run
             self.next_remover_run = datetime.now() + timedelta(
-                seconds=int(config.REMOVE_FILE_AFTER_MINS) * 60
+                minutes=self.remover_interval
             )
-
             logger.info(
-                f"Next removal scheduled for: {self.next_remover_run.strftime('%Y-%m-%d %H:%M:%S')}"
+                f"📅 Next cleanup: {self.next_remover_run.strftime('%H:%M:%S')}"
             )
 
         except Exception as e:
-            logger.error(f"Remover failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ Remover failed: {str(e)}")
 
     def run_youtube_scraper(self):
-        """Execute YouTube scraping task with error handling."""
+        """Execute YouTube scraping task."""
         try:
-            logger.info("=" * 50)
-            logger.info("Starting YouTube Scraper")
+            logger.info("🎥 === YOUTUBE SCRAPER STARTING ===")
+            self.last_activity = "Scraping YouTube"
 
             shorts.main()
 
             # Schedule next run
             self.next_youtube_run = datetime.now() + timedelta(
-                seconds=int(config.SCRAPER_INTERVAL_IN_MIN) * 60
+                minutes=self.youtube_interval
             )
-
             logger.info(
-                f"Next YouTube scraping scheduled for: {self.next_youtube_run.strftime('%Y-%m-%d %H:%M:%S')}"
+                f"📅 Next YouTube scraping: {self.next_youtube_run.strftime('%H:%M:%S')}"
             )
 
         except Exception as e:
-            logger.error(f"YouTube scraper failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ YouTube scraper failed: {str(e)}")
 
     def handle_error(self):
-        """Handle consecutive errors with exponential backoff."""
+        """Handle consecutive errors."""
         self.consecutive_errors += 1
 
         if self.consecutive_errors >= self.max_consecutive_errors:
             logger.critical(
-                f"Too many consecutive errors ({self.consecutive_errors}). Reinitializing..."
+                f"🚨 Too many consecutive errors ({self.consecutive_errors}). Reinitializing..."
             )
-
-            # Try to reinitialize Instagram client
             self.api = None
             self.initialize_instagram()
-
-            # Reset error counter
             self.consecutive_errors = 0
-
-            # Add longer delay
             time.sleep(60)
 
-    def print_status(self):
-        """Print current application status."""
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def print_heartbeat(self):
+        """Print regular heartbeat to show the app is alive."""
+        current_time = datetime.now()
 
-        status_lines = ["=" * 50, f"ReelsAutoPilot Status - {current_time}", "-" * 50]
+        logger.info("💓 === HEARTBEAT ===")
+        logger.info(f"   ⏰ Current time: {current_time.strftime('%H:%M:%S')}")
+        logger.info(f"   🎯 Last activity: {self.last_activity}")
+        logger.info(f"   📊 Consecutive errors: {self.consecutive_errors}")
 
-        if config.IS_ENABLED_REELS_SCRAPER:
-            status_lines.append(
-                f"Next Reels Scrape: {self.next_reels_scraper_run.strftime('%H:%M:%S')}"
-            )
+        # Show countdown to next tasks
+        tasks = [
+            (
+                "🎬 Scraper",
+                self.next_reels_scraper_run,
+                self._is_enabled("IS_ENABLED_REELS_SCRAPER"),
+            ),
+            (
+                "📤 Poster",
+                self.next_poster_run,
+                self._is_enabled("IS_ENABLED_AUTO_POSTER"),
+            ),
+            ("🗑️ Remover", self.next_remover_run, self._is_enabled("IS_REMOVE_FILES")),
+            (
+                "🎥 YouTube",
+                self.next_youtube_run,
+                self._is_enabled("IS_ENABLED_YOUTUBE_SCRAPING"),
+            ),
+        ]
 
-        if config.IS_ENABLED_AUTO_POSTER:
-            status_lines.append(
-                f"Next Post: {self.next_poster_run.strftime('%H:%M:%S')}"
-            )
+        logger.info("   📅 Next tasks:")
+        for name, next_time, enabled in tasks:
+            if enabled:
+                diff = next_time - current_time
+                if diff.total_seconds() > 0:
+                    minutes = int(diff.total_seconds() // 60)
+                    seconds = int(diff.total_seconds() % 60)
+                    logger.info(
+                        f"      {name}: {next_time.strftime('%H:%M:%S')} (in {minutes}m {seconds}s)"
+                    )
+                else:
+                    logger.info(f"      {name}: Ready to run!")
 
-        if config.IS_REMOVE_FILES:
-            status_lines.append(
-                f"Next File Removal: {self.next_remover_run.strftime('%H:%M:%S')}"
-            )
-
-        if config.IS_ENABLED_YOUTUBE_SCRAPING:
-            status_lines.append(
-                f"Next YouTube Scrape: {self.next_youtube_run.strftime('%H:%M:%S')}"
-            )
-
-        status_lines.append("=" * 50)
-
-        for line in status_lines:
-            logger.debug(line)
+        logger.info("================")
 
     def run(self):
-        """Main application loop with scheduling."""
-        logger.info("Starting ReelsAutoPilot main loop")
+        """Main application loop."""
+        logger.info("🚀 Starting ReelsAutoPilot main loop")
 
         # Initialize Instagram if needed
         if not self.initialize_instagram():
-            logger.critical("Failed to start application")
+            logger.critical("💥 Failed to start application")
             return
+
+        if self.dev_mode:
+            logger.info("🔧 Development mode: Will show regular heartbeats")
+        else:
+            logger.info("🔄 Production mode: Entering background operation")
+            logger.info("💡 Tip: Press Ctrl+C to stop gracefully")
+
+        loop_count = 0
 
         # Main loop
         while self.is_running:
             try:
+                loop_count += 1
                 current_time = datetime.now()
 
                 # Check and run scheduled tasks
-                if config.IS_ENABLED_REELS_SCRAPER == "1":
-                    if current_time >= self.next_reels_scraper_run:
-                        self.run_reels_scraper()
+                tasks_executed = 0
 
-                if config.IS_ENABLED_AUTO_POSTER == "1":
-                    if current_time >= self.next_poster_run:
-                        self.run_poster()
+                if (
+                    self._is_enabled("IS_ENABLED_REELS_SCRAPER")
+                    and current_time >= self.next_reels_scraper_run
+                ):
+                    self.run_reels_scraper()
+                    tasks_executed += 1
 
-                if config.IS_REMOVE_FILES == "1":
-                    if current_time >= self.next_remover_run:
-                        self.run_remover()
+                if (
+                    self._is_enabled("IS_ENABLED_AUTO_POSTER")
+                    and current_time >= self.next_poster_run
+                ):
+                    self.run_poster()
+                    tasks_executed += 1
 
-                if config.IS_ENABLED_YOUTUBE_SCRAPING == "1":
-                    if current_time >= self.next_youtube_run:
-                        self.run_youtube_scraper()
+                if (
+                    self._is_enabled("IS_REMOVE_FILES")
+                    and current_time >= self.next_remover_run
+                ):
+                    self.run_remover()
+                    tasks_executed += 1
 
-                # Print status every 5 minutes
-                if current_time.minute % 5 == 0 and current_time.second < 2:
-                    self.print_status()
+                if (
+                    self._is_enabled("IS_ENABLED_YOUTUBE_SCRAPING")
+                    and current_time >= self.next_youtube_run
+                ):
+                    self.run_youtube_scraper()
+                    tasks_executed += 1
+
+                # Print status periodically
+                if (
+                    current_time - self.last_status_print
+                ).total_seconds() >= self.status_interval:
+                    if tasks_executed == 0:
+                        self.last_activity = "Waiting for next scheduled task"
+                    self.print_heartbeat()
+                    self.last_status_print = current_time
 
                 # Sleep to avoid high CPU usage
                 time.sleep(1)
 
             except KeyboardInterrupt:
-                logger.info("Received interrupt signal, shutting down...")
+                logger.info("🛑 Graceful shutdown requested...")
                 self.is_running = False
 
             except Exception as e:
-                logger.error(f"Unexpected error in main loop: {str(e)}", exc_info=True)
+                logger.error(
+                    f"💥 Unexpected error in main loop: {str(e)}", exc_info=True
+                )
                 self.handle_error()
                 time.sleep(5)
 
-        logger.info("ReelsAutoPilot stopped")
+        logger.info("🏁 ReelsAutoPilot stopped gracefully")
 
 
 def main():
     """Entry point for the application."""
     try:
-        app = ReelsAutoPilot()
+        # Check for dev mode
+        dev_mode = "--dev" in sys.argv or "-d" in sys.argv
+
+        if dev_mode:
+            logger.info("🔧 Starting in DEVELOPMENT mode (shorter intervals)")
+
+        app = ReelsAutoPilot(dev_mode=dev_mode)
         app.run()
+
     except Exception as e:
-        logger.critical(f"Fatal error: {str(e)}", exc_info=True)
+        logger.critical(f"💥 Fatal error: {str(e)}", exc_info=True)
         sys.exit(1)
 
 

@@ -237,8 +237,6 @@ def progress_footer() -> Panel:
 
 # Initialize the layout
 layout = make_layout()
-layout["logo"].update(Helper.make_sponsor_message())
-layout["links"].update(Helper.make_my_information())
 layout["mainBody"].update(generate_table())
 layout["side"].update(Panel(config_table(), border_style="red"))
 layout["footer"].update(progress_footer())
