@@ -315,4 +315,4 @@ if setup == "y":
 
 
 python_executable_path = sys.executable
-os.system(python_executable_path + " app.py 1")
+os.system(f'"{python_executable_path}" -m backend.src.app 1')
